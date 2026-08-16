@@ -5,7 +5,7 @@ import Blobs from '../components/Blobs'
 import PageTransition from '../components/PageTransition'
 import Button from '../components/ui/Button'
 import { Input, Field } from '../components/ui/Input'
-import { Icon, GoogleIcon } from '../components/Icons'
+import { Icon } from '../components/Icons'
 import { supabase, isSupabaseConfigured, AUTH_REDIRECT } from '../lib/supabase'
 import { useAuthStore } from '../store/auth'
 import { toast } from '../store/toast'
@@ -19,7 +19,6 @@ export default function Auth() {  const [params, setParams] = useSearchParams()
   const [password, setPassword] = useState('')
   const [name, setName] = useState('')
   const [busy, setBusy] = useState(false)
-  const [googleBusy, setGoogleBusy] = useState(false)
   const [showPw, setShowPw] = useState(false)
   const [resetMode, setResetMode] = useState(false)
   const [resetEmail, setResetEmail] = useState('')
@@ -102,24 +101,6 @@ export default function Auth() {  const [params, setParams] = useSearchParams()
       toast.error(err.message || 'Gagal mengirim link reset.')
     } finally {
       setResetBusy(false)
-    }
-  }
-
-  const googleLogin = async () => {
-    if (!isSupabaseConfigured) {
-      toast.error('Supabase belum dikonfigurasi.')
-      return
-    }
-    setGoogleBusy(true)
-    try {
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider: 'google',
-        options: { redirectTo: AUTH_REDIRECT },
-      })
-      if (error) throw error
-    } catch (err) {
-      toast.error(err.message || 'Gagal login dengan Google.')
-      setGoogleBusy(false)
     }
   }
 
@@ -240,23 +221,6 @@ export default function Auth() {  const [params, setParams] = useSearchParams()
             </Button>
           </form>
           )}
-
-          <div className="flex items-center gap-3 my-6">
-            <span className="flex-1 h-[1.5px] bg-line" />
-            <span className="text-xs font-bold text-ink-faint">ATAU</span>
-            <span className="flex-1 h-[1.5px] bg-line" />
-          </div>
-
-          <Button
-            variant="white"
-            fullWidth
-            size="lg"
-            onClick={googleLogin}
-            loading={googleBusy}
-            icon={<GoogleIcon size={19} />}
-          >
-            Lanjut dengan Google
-          </Button>
 
           <div className="flex items-center gap-3 my-6">
             <span className="flex-1 h-[1.5px] bg-line" />

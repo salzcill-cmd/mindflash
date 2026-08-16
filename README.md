@@ -14,7 +14,7 @@ sampai mahasiswa — tanpa tampilan template AI generik.
 
 | Fitur | Keterangan |
 |---|---|
-| 🔐 Autentikasi | Email/password (+ **lupa password** via email, toggle lihat password), Google (1-klik), dan **guest mode** (tanpa akun, data di localStorage) |
+| 🔐 Autentikasi | Email/password (+ **lupa password** via email, toggle lihat password) dan **guest mode** (tanpa akun, data di localStorage) |
 | 🗺️ Mindmap Editor | Drag & drop node, koneksi antar node, 2 mode (**Freeform** & **Auto-Layout**), warna & ikon node, undo/redo, **duplikat node**, garis lurus/lengkung, double-click edit, fit view, panel pintasan keyboard, export **PNG** |
 | ✨ Konversi 1-klik | **Mindmap → Flashcard**: setiap cabang otomatis jadi kartu tanya-jawab |
 | 🗂️ Template Mindmap | Mulai cepat dari template: Peta Konsep, Rencana Belajar, Rumus & Formula, Daftar Tugas, Struktur Bab |
@@ -72,8 +72,16 @@ node scripts/gen-icons.mjs  # regenerate ikon PWA (bila mengubah desain)
    `flashcard_progress`, lengkap dengan **Row Level Security (RLS)** — user hanya bisa
    membaca/mengedit datanya sendiri, dan data `is_public = true` bisa dibaca publik tanpa login.
 3. Buka **Settings → API**, salin *Project URL* & *anon public key* ke `.env`.
-4. (Opsional) **Google OAuth**: Dashboard → Authentication → Providers → aktifkan Google,
-   tambahkan redirect URL `http://localhost:5173/dashboard`.
+4. (Opsional) **Google OAuth** — saat ini tombol Google di halaman login
+   sengaja tidak ditampilkan. Jika suatu saat ingin mengaktifkannya:
+   1. Dashboard → **Authentication → Providers → Google** → **Enable**, buat OAuth
+      client di Google Cloud Console (Client ID + Secret), lalu tempel di halaman itu.
+   2. Dashboard → **Authentication → URL Configuration → Redirect URLs**,
+      tambahkan `http://localhost:5173/dashboard` (dev) dan
+      `https://domain-produksimu/dashboard` (produksi).
+   3. Tambahkan kembali tombol "Lanjut dengan Google" di `src/pages/Auth.jsx`
+      (pola `supabase.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: AUTH_REDIRECT } })`).
+   > Referensi: <https://supabase.com/docs/guides/auth/social-login/auth-google>
 5. (Opsional) **Avatar upload**: bucket `avatars` sudah dibuat otomatis oleh skema.
 
 > Catatan hapus akun penuh: menghapus akun dari aplikasi menghapus seluruh data user
