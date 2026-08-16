@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="id">
+  <head>
+    <meta charset="UTF-8" />
+    <script>
+      // Terapkan tema sebelum render (anti-kedip) — dark mode opsional
+      ;(function () {
+        try {
+          var t = localStorage.getItem('mindflash:theme')
+          if (t === 'dark' || (!t && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+            document.documentElement.classList.add('dark')
+          }
+        } catch (e) {}
+      })()
+    </script>
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="description"
+      content="MindFlash — buat mindmap & flashcard, belajar hafalan pintar dengan spaced repetition. Gratis, colorful, dan menyenangkan untuk pelajar."
+    />
+    <meta name="theme-color" content="#7C5CFC" />
+    <meta name="keywords" content="mindmap, flashcard, spaced repetition, belajar, pelajar, sm2, catatan" />
+    <meta name="author" content="MindFlash" />
+
+    <!-- PWA -->
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="MindFlash" />
+
+    <!-- Open Graph / sosial -->
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="MindFlash" />
+    <meta property="og:title" content="MindFlash — Belajar Lebih Cepat & Menyenangkan" />
+    <meta
+      property="og:description"
+      content="Buat mindmap & flashcard, lalu hafalkan dengan sistem spaced repetition. Gratis untuk semua pelajar."
+    />
+    <meta property="og:image" content="/icons/icon-512.png" />
+    <meta name="twitter:card" content="summary" />
+    <meta name="twitter:title" content="MindFlash — Belajar Lebih Cepat & Menyenangkan" />
+    <meta
+      name="twitter:description"
+      content="Mindmap & flashcard pintar dengan spaced repetition untuk pelajar."
+    />
+
+    <title>MindFlash — Belajar Lebih Cepat & Menyenangkan</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@400;500;600;700;800&family=Nunito:ital,wght@0,400;0,500;0,600;0,700;0,800;0,900;1,400;1,600&display=swap"
+      rel="stylesheet"
+    />
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.jsx"></script>
+  </body>
+</html>
