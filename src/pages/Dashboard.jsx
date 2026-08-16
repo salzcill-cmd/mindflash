@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { Link, useNavigate } from 'react-router-dom'
 import { AnimatePresence, motion } from 'framer-motion'
 import Blobs from '../components/Blobs'
@@ -571,15 +572,8 @@ function MindmapThumb({ data }) {
 
 function CardMenu({ onOpen, onRename, onDuplicate, onShare, onDelete }) {
   const [open, setOpen] = useState(false)
-  const ref = useRef(null)
-
-  useEffect(() => {
-    const onClick = (e) => {
-      if (ref.current && !ref.current.contains(e.target)) setOpen(false)
-    }
-    document.addEventListener('mousedown', onClick)
-    return () => document.removeEventListener('mousedown', onClick)
-  }, [])
+  const [pos, setPos] = useState({ top: 0, left: 0 })
+  const btnRef = useRef(null)
 
   const items = [
     { label: 'Buka', icon: 'eye', fn: onOpen },
@@ -589,26 +583,58 @@ function CardMenu({ onOpen, onRename, onDuplicate, onShare, onDelete }) {
     { label: 'Hapus', icon: 'trash', fn: onDelete, danger: true },
   ]
 
+  const toggle = (e) => {
+    e.stopPropagation()
+    if (!open && btnRef.current) {
+      // Posisi dihitung dari tombol, lalu dropdown di-render via portal ke
+      // <body> — supaya tidak terpotong oleh overflow-hidden kartu (bug HP).
+      const r = btnRef.current.getBoundingClientRect()
+      const W = 176 // w-44
+      const left = Math.min(Math.max(r.right - W, 8), window.innerWidth - W - 8)
+      setPos({ top: r.bottom + 6, left })
+    }
+    setOpen((v) => !v)
+  }
+
+  // Tutup saat klik di luar atau halaman di-scroll/resize (posisi fixed jadi basi)
+  useEffect(() => {
+    if (!open) return
+    const onClick = (e) => {
+      if (btnRef.current && !btnRef.current.contains(e.target)) setOpen(false)
+    }
+    const onScroll = () => setOpen(false)
+    document.addEventListener('mousedown', onClick)
+    document.addEventListener('touchstart', onClick)
+    window.addEventListener('scroll', onScroll, true)
+    window.addEventListener('resize', onScroll)
+    return () => {
+      document.removeEventListener('mousedown', onClick)
+      document.removeEventListener('touchstart', onClick)
+      window.removeEventListener('scroll', onScroll, true)
+      window.removeEventListener('resize', onScroll)
+    }
+  }, [open])
+
   return (
-    <div className="relative" ref={ref}>
-      <button
-        onClick={(e) => {
-          e.stopPropagation()
-          setOpen((v) => !v)
-        }}
-        aria-label="Menu item"
-        className="tap w-9 h-9 rounded-xl flex items-center justify-center text-ink-faint hover:bg-surface-2 hover:text-ink"
-      >
-        <Icon name="menu" size={18} />
-      </button>
-      <AnimatePresence>
-        {open && (
+    <>
+      <div ref={btnRef} className="relative">
+        <button
+          onClick={toggle}
+          aria-label="Menu item"
+          className="tap w-9 h-9 rounded-xl flex items-center justify-center text-ink-faint hover:bg-surface-2 hover:text-ink"
+        >
+          <Icon name="menu" size={18} />
+        </button>
+      </div>
+      {open &&
+        createPortal(
           <motion.div
             initial={{ opacity: 0, y: 6, scale: 0.96 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 4, scale: 0.97 }}
             transition={{ duration: 0.14 }}
-            className="absolute right-0 top-10 z-30 w-44 bg-surface rounded-2xl border-[1.5px] border-line shadow-[0_18px_44px_-14px_rgba(43,35,80,0.35)] p-1.5"
+            style={{ top: pos.top, left: pos.left }}
+            className="fixed z-[70] w-44 bg-surface rounded-2xl border-[1.5px] border-line shadow-[0_18px_44px_-14px_rgba(43,35,80,0.35)] p-1.5"
             onClick={(e) => e.stopPropagation()}
           >
             {items.map((it) => (
@@ -626,10 +652,10 @@ function CardMenu({ onOpen, onRename, onDuplicate, onShare, onDelete }) {
                 {it.label}
               </button>
             ))}
-          </motion.div>
+          </motion.div>,
+          document.body,
         )}
-      </AnimatePresence>
-    </div>
+    </>
   )
 }
 
