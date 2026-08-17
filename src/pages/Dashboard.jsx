@@ -574,6 +574,7 @@ function CardMenu({ onOpen, onRename, onDuplicate, onShare, onDelete }) {
   const [open, setOpen] = useState(false)
   const [pos, setPos] = useState({ top: 0, left: 0 })
   const btnRef = useRef(null)
+  const menuRef = useRef(null)
 
   const items = [
     { label: 'Buka', icon: 'eye', fn: onOpen },
@@ -596,11 +597,16 @@ function CardMenu({ onOpen, onRename, onDuplicate, onShare, onDelete }) {
     setOpen((v) => !v)
   }
 
-  // Tutup saat klik di luar atau halaman di-scroll/resize (posisi fixed jadi basi)
+  // Tutup saat klik di luar menu, atau halaman di-scroll/resize (posisi fixed
+  // jadi basi). Penting: klik yang DIMULAI di dalam menu (mousedown/touchstart)
+  // tidak boleh menutup menu — kalau ditutup lebih dulu, event click tidak akan
+  // pernah sampai ke item-nya sehingga aksi Hapus/Duplikat/Share tidak jalan.
   useEffect(() => {
     if (!open) return
     const onClick = (e) => {
-      if (btnRef.current && !btnRef.current.contains(e.target)) setOpen(false)
+      if (btnRef.current?.contains(e.target)) return
+      if (menuRef.current?.contains(e.target)) return
+      setOpen(false)
     }
     const onScroll = () => setOpen(false)
     document.addEventListener('mousedown', onClick)
@@ -635,6 +641,7 @@ function CardMenu({ onOpen, onRename, onDuplicate, onShare, onDelete }) {
             transition={{ duration: 0.14 }}
             style={{ top: pos.top, left: pos.left }}
             className="fixed z-[70] w-44 bg-surface rounded-2xl border-[1.5px] border-line shadow-[0_18px_44px_-14px_rgba(43,35,80,0.35)] p-1.5"
+            ref={menuRef}
             onClick={(e) => e.stopPropagation()}
           >
             {items.map((it) => (
