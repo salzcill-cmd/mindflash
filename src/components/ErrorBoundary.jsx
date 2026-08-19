@@ -10,15 +10,28 @@ import { Icon } from './Icons'
 export default class ErrorBoundary extends Component {
   constructor(props) {
     super(props)
-    this.state = { error: null }
+    this.state = { error: null, errorInfo: null }
   }
 
   static getDerivedStateFromError(error) {
     return { error }
   }
 
+  componentDidCatch(error, errorInfo) {
+    // Log error untuk debugging (production bisa kirim ke service monitoring)
+    console.error('[ErrorBoundary]', error, errorInfo)
+    this.setState({ errorInfo })
+  }
+
+  // Reset error state — biar user bisa coba lagi tanpa hard reload
+  reset = () => {
+    this.setState({ error: null, errorInfo: null })
+  }
+
   render() {
     if (!this.state.error) return this.props.children
+
+    const isDev = import.meta.env?.DEV
 
     return (
       <div className="min-h-[70vh] flex items-center justify-center px-4 py-16">
@@ -35,16 +48,29 @@ export default class ErrorBoundary extends Component {
             <Button
               variant="primary"
               icon={<Icon name="refresh" size={16} />}
+              onClick={this.reset}
+            >
+              Coba Lagi
+            </Button>
+            <Button
+              variant="white"
+              icon={<Icon name="home" size={16} />}
               onClick={() => window.location.reload()}
             >
               Muat Ulang
             </Button>
-            <a href="/dashboard">
-              <Button variant="white" icon={<Icon name="home" size={16} />}>
-                Ke Dashboard
-              </Button>
-            </a>
           </div>
+          {/* Tampilkan detail error di dev mode saja */}
+          {isDev && this.state.errorInfo && (
+            <details className="mt-6 text-left bg-surface-2 rounded-2xl border-[1.5px] border-line p-4 text-xs text-ink-soft overflow-auto max-h-48">
+              <summary className="cursor-pointer font-extrabold text-ink mb-2">Detail Error (Dev)</summary>
+              <pre className="whitespace-pre-wrap break-words">
+                {this.state.error?.message}
+                {'\n\n'}
+                {this.state.errorInfo?.componentStack}
+              </pre>
+            </details>
+          )}
           <div className="mt-8 opacity-40">
             <Logo size={22} />
           </div>

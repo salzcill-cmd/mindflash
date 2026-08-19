@@ -6,6 +6,8 @@ import tailwindcss from '@tailwindcss/vite'
 export default defineConfig({
   plugins: [react(), tailwindcss()],
   build: {
+    // Target browser modern — lebih kecil output, CSS modern
+    target: 'es2020',
     rollupOptions: {
       output: {
         manualChunks(id) {
@@ -14,6 +16,7 @@ export default defineConfig({
             if (id.includes('framer-motion')) return 'vendor-motion'
             if (id.includes('@xyflow')) return 'vendor-flow'
             if (id.includes('@supabase')) return 'vendor-supabase'
+            if (id.includes('react-router')) return 'vendor-router'
           }
         },
       },

@@ -8,7 +8,7 @@
    - API Supabase      : tidak di-cache (selalu data terbaru)
    ============================================================ */
 
-const CACHE = 'mindflash-v1'
+const CACHE = 'mindflash-v2'
 
 const SHELL = [
   '/',

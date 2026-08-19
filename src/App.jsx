@@ -118,6 +118,7 @@ export default function App() {
   }, [location.pathname])
 
   // Seed demo content untuk user pertama kali (guest)
+  // hanya perlu dijalankan sekali — seedDemoContent() punya guard sendiri
   useEffect(() => {
     seedDemoContent()
   }, [])

@@ -17,7 +17,7 @@ const STEPS = [
   {
     emoji: '🗺️',
     title: 'Buat Peta Pikiran',
-    desc: 'Sudah ada demo materi "Fotosintesis" di dashboarmu. Buka, edit, dan rasakan sendiri betapa mudahnya!',
+    desc: 'Sudah ada demo materi "Fotosintesis" di dashboard-mu. Buka, edit, dan rasakan sendiri betapa mudahnya!',
     color: '#ff6f91',
     bg: '#ffeaf4',
   },

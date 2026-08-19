@@ -44,7 +44,6 @@
   --animate-float-slow: float 18s ease-in-out infinite;
   --animate-wiggle: wiggle 2.4s ease-in-out infinite;
   --animate-pop: pop 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) both;
-  --animate-spin-slow: spin 16s linear infinite;
   --animate-blob: blob 20s ease-in-out infinite;
   --animate-shimmer: shimmer 2.6s linear infinite;
   --animate-bob: bob 2.2s ease-in-out infinite;
@@ -482,7 +481,10 @@ body {
   will-change: background-position;
 }
 
-/* Modal overlay: biar backdrop-blur tak bikin reflow */
+/* Modal overlay: isolate backdrop-blur tanpa ganggu layout */
 [role='dialog'] {
   contain: layout style;
+}
+[role='dialog'] > div {
+  contain: unset;
 }
