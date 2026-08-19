@@ -352,10 +352,137 @@ button {
   border-radius: 12px;
 }
 
+/* ============================================================
+   Mobile UX Improvements
+   ============================================================ */
+
+/* Tingkatkan target sentuh minimum 44×44px sesuai WCAG */
+@media (pointer: coarse) {
+  button, a, [role='button'], input, select, textarea {
+    min-height: 44px;
+  }
+  /* Select element: tampil lebih baik di mobile */
+  select {
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1.5L6 6.5L11 1.5' stroke='%239b94b6' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' fill='none'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 12px center;
+    padding-right: 36px;
+  }
+  /* Dropdown menu di mobile: full width di bagian bawah */
+  .mobile-bottom-sheet {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    border-radius: 24px 24px 0 0;
+    max-height: 70vh;
+    overflow-y: auto;
+    padding-bottom: env(safe-area-inset-bottom, 0);
+  }
+}
+
+/* Smooth scroll untuk halaman panjang di mobile */
+@media (max-width: 640px) {
+  html {
+    scroll-behavior: smooth;
+    -webkit-overflow-scrolling: touch;
+  }
+  /* Hero heading lebih kecil di HP kecil */
+  .hero-title {
+    font-size: clamp(28px, 8vw, 42px);
+  }
+  /* Card grid: 1 kolom di HP kecil */
+  .card-grid-responsive {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Touch feedback: ripple-like effect pada tombol */
+@media (hover: none) and (pointer: coarse) {
+  .tap:active {
+    transform: scale(0.96);
+    transition-duration: 0.08s;
+  }
+  .lift:active {
+    transform: translateY(-2px) scale(0.98);
+    transition-duration: 0.1s;
+  }
+  /* Card menu: lebih besar untuk touch */
+  [aria-label='Menu item'] {
+    width: 44px;
+    height: 44px;
+  }
+}
+
+/* Prevent overscroll bounce di mobile */
+body {
+  overscroll-behavior-y: contain;
+}
+
+/* Safe area untuk iPhone notch */
+@supports (padding: env(safe-area-inset-top)) {
+  header {
+    padding-top: env(safe-area-inset-top);
+  }
+  footer {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
   }
+}
+
+/* ============================================================
+   Performance: GPU acceleration & layout containment
+   ============================================================ */
+
+/* Animasi blob & float pakai will-change supaya browser pre-composit */
+.glow-orb,
+.animate-blob,
+.animate-float,
+.animate-float-slow {
+  will-change: transform;
+}
+
+/* React Flow canvas biar isolasi layout */
+.react-flow {
+  contain: layout style;
+}
+
+/* Flashcard flip: isolasi 3D transform */
+.preserve-3d {
+  contain: layout style;
+}
+
+/* Hero mockup di landing: isolasi parallax */
+.hero-title {
+  contain: layout style;
+}
+
+/* Marquee: isolate repaint */
+.marquee-mask {
+  contain: layout style paint;
+}
+
+/* Badge & pill kecil: isolate layout */
+.stat-pill {
+  contain: layout style;
+}
+
+/* Skeleton shimmer: GPU friendly */
+.skeleton {
+  will-change: background-position;
+}
+
+/* Modal overlay: biar backdrop-blur tak bikin reflow */
+[role='dialog'] {
+  contain: layout style;
 }

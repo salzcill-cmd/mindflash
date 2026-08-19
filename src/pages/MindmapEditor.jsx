@@ -21,6 +21,7 @@ import { Icon } from '../components/Icons'
 import ShareModal from '../components/ShareModal'
 import { toast } from '../store/toast'
 import { NODE_COLORS, NODE_ICONS, NODE_W, NODE_H, AUTO_SAVE_DELAY, nodeColor } from '../lib/constants'
+import { sanitizeText } from '../lib/sanitize'
 import { computeAutoLayout } from '../lib/layout'
 import { exportFlowAsPng, downloadDataUrl } from '../lib/exportPng'
 import { getMindmap, updateMindmap, setMindmapPublic, createDeck, addCard } from '../lib/storage'
@@ -526,7 +527,10 @@ function Editor() {
             </Link>
             <input
               value={mindmap.title}
-              onChange={(e) => setMindmap((m) => ({ ...m, title: e.target.value }))}
+              onChange={(e) => {
+                const safe = sanitizeText(e.target.value, { maxLength: 80 })
+                setMindmap((m) => ({ ...m, title: safe }))
+              }}
               className="bg-transparent font-extrabold text-ink text-[15px] w-28 sm:w-44 outline-none focus:ring-2 focus:ring-brand/30 rounded-lg px-1.5 py-0.5"
               aria-label="Judul mindmap"
             />
@@ -618,7 +622,7 @@ function Editor() {
             <input
               ref={labelInputRef}
               value={selectedNode.data.label}
-              onChange={(e) => updateSelectedNode({ label: e.target.value })}
+              onChange={(e) => updateSelectedNode({ label: sanitizeText(e.target.value, { maxLength: 60 }) })}
               onFocus={recordBefore}
               placeholder="Teks node…"
               className="w-full bg-surface-2 border-[1.5px] border-line rounded-xl px-3.5 py-2.5 text-sm font-extrabold focus:border-brand focus:outline-none focus:ring-4 focus:ring-brand/15 mb-4"

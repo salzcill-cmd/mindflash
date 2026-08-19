@@ -10,6 +10,7 @@ import { useAuthStore } from '../store/auth'
 import { supabase, isSupabaseConfigured } from '../lib/supabase'
 import { updateProfile, deleteAllUserData } from '../lib/storage'
 import { toast } from '../store/toast'
+import { validateFile, sanitizeUrl } from '../lib/sanitize'
 
 export default function Settings() {
   const user = useAuthStore((s) => s.user)
@@ -64,14 +65,21 @@ export default function Settings() {
   const uploadAvatar = async (e) => {
     const file = e.target.files?.[0]
     if (!file) return
+    // Validasi file sebelum upload
+    const check = validateFile(file, { maxSizeMB: 2, allowedTypes: ['image/jpeg', 'image/png', 'image/webp'] })
+    if (!check.valid) {
+      toast.error(check.error)
+      return
+    }
     if (!isSupabaseConfigured) {
       toast.error('Supabase belum dikonfigurasi.')
       return
     }
     setUploading(true)
     try {
-      const ext = file.name.split('.').pop() || 'png'
-      const path = `${user.id}/avatar-${Date.now()}.${ext}`
+      // Gunakan hanya ekstensi yang diizinkan (cegah path traversal via filename)
+      const safeExt = file.type === 'image/png' ? 'png' : file.type === 'image/webp' ? 'webp' : 'jpg'
+      const path = `${user.id}/avatar-${Date.now()}.${safeExt}`
       const { error } = await supabase.storage.from('avatars').upload(path, file, { upsert: true })
       if (error) {
         if (error.message.toLowerCase().includes('bucket')) {
@@ -195,6 +203,11 @@ export default function Settings() {
                 onChange={(e) => setAvatarUrl(e.target.value)}
                 placeholder="https://…"
                 hint="Atau tempel link gambar langsung di sini."
+                onBlur={(e) => {
+                  // Sanitize URL saat user selesai input
+                  const safe = sanitizeUrl(e.target.value)
+                  if (safe !== e.target.value) setAvatarUrl(safe)
+                }}
               />
               <div className="flex justify-end">
                 <Button type="submit" loading={saving} icon={<Icon name="check" size={16} />}>

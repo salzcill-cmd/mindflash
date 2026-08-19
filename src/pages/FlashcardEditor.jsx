@@ -10,6 +10,7 @@ import ConfirmDialog from '../components/ConfirmDialog'
 import EmptyState from '../components/ui/EmptyState'
 import { toast } from '../store/toast'
 import { AUTO_SAVE_DELAY, DECK_COLORS, deckColor } from '../lib/constants'
+import { sanitizeText, sanitizeContent, sanitizeUrl, isSafeUrl } from '../lib/sanitize'
 import {
   getDeck,
   updateDeck,
@@ -232,8 +233,9 @@ export default function FlashcardEditor() {
   }
 
   const changeTitle = (title) => {
-    setDeck((d) => ({ ...d, title }))
-    scheduleSave(() => updateDeck(id, { title }))
+    const safe = sanitizeText(title, { maxLength: 80 })
+    setDeck((d) => ({ ...d, title: safe }))
+    scheduleSave(() => updateDeck(id, { title: safe }))
   }
 
   const emptyCards = useMemo(() => cards.length === 0, [cards])
@@ -529,7 +531,7 @@ export default function FlashcardEditor() {
                   </span>
                   <textarea
                     value={selected.front_text}
-                    onChange={(e) => updateSelected({ front_text: e.target.value })}
+                    onChange={(e) => updateSelected({ front_text: sanitizeContent(e.target.value, { maxLength: 2000 }) })}
                     placeholder="mis. Apa fungsi klorofil?"
                     rows={3}
                     className="w-full bg-surface-2 border-[1.5px] border-line rounded-2xl px-4 py-3 text-[15px] font-semibold resize-none focus:border-brand focus:outline-none focus:ring-4 focus:ring-brand/15 transition-all"
@@ -541,7 +543,7 @@ export default function FlashcardEditor() {
                   </span>
                   <textarea
                     value={selected.back_text}
-                    onChange={(e) => updateSelected({ back_text: e.target.value })}
+                    onChange={(e) => updateSelected({ back_text: sanitizeContent(e.target.value, { maxLength: 5000 }) })}
                     placeholder="mis. Menangkap cahaya matahari untuk fotosintesis"
                     rows={3}
                     className="w-full bg-surface-2 border-[1.5px] border-line rounded-2xl px-4 py-3 text-[15px] font-semibold resize-none focus:border-brand focus:outline-none focus:ring-4 focus:ring-brand/15 transition-all"
@@ -557,7 +559,11 @@ export default function FlashcardEditor() {
                     </span>
                     <input
                       value={selected.image_url || ''}
-                      onChange={(e) => updateSelected({ image_url: e.target.value })}
+                      onChange={(e) => {
+                        const val = e.target.value.trim()
+                        // Hanya izinkan URL http(s) — tolak javascript:, data:, dll.
+                        updateSelected({ image_url: val ? (isSafeUrl(val) ? val : '') : '' })
+                      }}
                       placeholder="Tempel link gambar di sini…"
                       className="flex-1 bg-surface border-[1.5px] border-line rounded-xl px-3.5 py-2.5 text-sm font-semibold focus:border-brand focus:outline-none focus:ring-4 focus:ring-brand/15 transition-all"
                     />

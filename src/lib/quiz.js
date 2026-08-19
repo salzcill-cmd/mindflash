@@ -13,12 +13,16 @@ export const shuffleArr = (arr) => {
   return a
 }
 
-/** Bangun 4 opsi kuis: jawaban benar + 3 pengecoh unik dari kartu lain. */
+/** Bangun 4 opsi kuis: jawaban benar + 3 pengecoh unik dari kartu lain.
+ *  Kalau kartu kurang dari 4, opsi yang tersedia saja yang ditampilkan.
+ *  Kalau ada jawaban sama, dide-duplikat. */
 export const buildOptions = (card, cards) => {
   const correct = card.back_text || '…'
   const others = cards
     .filter((c) => c.id !== card.id && c.back_text && c.back_text !== correct)
     .map((c) => c.back_text)
-  const distractors = shuffleArr([...new Set(others)]).slice(0, 3)
+  const unique = [...new Set(others)]
+  const distractors = shuffleArr(unique).slice(0, 3)
+  // Jika kurang dari 4 opsi (deck kecil), tetap tampilkan apa adanya
   return shuffleArr([correct, ...distractors])
 }

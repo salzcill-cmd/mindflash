@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState, useCallback, memo } from 'react'
 import { createPortal } from 'react-dom'
 import { Link, useNavigate } from 'react-router-dom'
 import { AnimatePresence, motion } from 'framer-motion'
@@ -16,6 +16,7 @@ import { useAuthStore } from '../store/auth'
 import { toast } from '../store/toast'
 import { getStreak } from '../lib/streak'
 import { deckColor, nodeColor } from '../lib/constants'
+import { sanitizeText } from '../lib/sanitize'
 import { MINDMAP_TEMPLATES, buildTemplate } from '../lib/templates'
 import {
   listMindmaps,
@@ -160,8 +161,13 @@ export default function Dashboard() {
   const doRename = async () => {
     if (!renaming) return
     try {
-      if (renaming.type === 'mindmap') await updateMindmap(renaming.id, { title: renaming.title })
-      else await updateDeck(renaming.id, { title: renaming.title })
+      const safeTitle = sanitizeText(renaming.title, { maxLength: 120 })
+      if (!safeTitle) {
+        toast.error('Judul tidak boleh kosong.')
+        return
+      }
+      if (renaming.type === 'mindmap') await updateMindmap(renaming.id, { title: safeTitle })
+      else await updateDeck(renaming.id, { title: safeTitle })
       toast.success('Nama diperbarui.')
       setRenaming(null)
       refresh()
@@ -573,6 +579,9 @@ function MindmapThumb({ data }) {
 function CardMenu({ onOpen, onRename, onDuplicate, onShare, onDelete }) {
   const [open, setOpen] = useState(false)
   const [pos, setPos] = useState({ top: 0, left: 0 })
+  const [isMobile, setIsMobile] = useState(() =>
+    typeof window !== 'undefined' && window.matchMedia('(pointer: coarse)').matches,
+  )
   const btnRef = useRef(null)
   const menuRef = useRef(null)
 
@@ -587,20 +596,17 @@ function CardMenu({ onOpen, onRename, onDuplicate, onShare, onDelete }) {
   const toggle = (e) => {
     e.stopPropagation()
     if (!open && btnRef.current) {
-      // Posisi dihitung dari tombol, lalu dropdown di-render via portal ke
-      // <body> — supaya tidak terpotong oleh overflow-hidden kartu (bug HP).
-      const r = btnRef.current.getBoundingClientRect()
-      const W = 176 // w-44
-      const left = Math.min(Math.max(r.right - W, 8), window.innerWidth - W - 8)
-      setPos({ top: r.bottom + 6, left })
+      if (!isMobile) {
+        // Desktop: dropdown di dekat tombol
+        const r = btnRef.current.getBoundingClientRect()
+        const W = 176
+        const left = Math.min(Math.max(r.right - W, 8), window.innerWidth - W - 8)
+        setPos({ top: r.bottom + 6, left })
+      }
     }
     setOpen((v) => !v)
   }
 
-  // Tutup saat klik di luar menu, atau halaman di-scroll/resize (posisi fixed
-  // jadi basi). Penting: klik yang DIMULAI di dalam menu (mousedown/touchstart)
-  // tidak boleh menutup menu — kalau ditutup lebih dulu, event click tidak akan
-  // pernah sampai ke item-nya sehingga aksi Hapus/Duplikat/Share tidak jalan.
   useEffect(() => {
     if (!open) return
     const onClick = (e) => {
@@ -620,6 +626,67 @@ function CardMenu({ onOpen, onRename, onDuplicate, onShare, onDelete }) {
       window.removeEventListener('resize', onScroll)
     }
   }, [open])
+
+  // Mobile: bottom sheet. Desktop: dropdown near button.
+  if (isMobile) {
+    return (
+      <>
+        <div ref={btnRef} className="relative">
+          <button
+            onClick={toggle}
+            aria-label="Menu item"
+            className="tap w-11 h-11 rounded-xl flex items-center justify-center text-ink-faint hover:bg-surface-2 hover:text-ink"
+          >
+            <Icon name="menu" size={20} />
+          </button>
+        </div>
+        {open &&
+          createPortal(
+            <>
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="fixed inset-0 z-[69] bg-black/30"
+                onClick={() => setOpen(false)}
+              />
+              <motion.div
+                initial={{ y: '100%' }}
+                animate={{ y: 0 }}
+                exit={{ y: '100%' }}
+                transition={{ type: 'spring', damping: 28, stiffness: 300 }}
+                className="fixed bottom-0 left-0 right-0 z-[70] bg-surface rounded-t-3xl border-t-[1.5px] border-line shadow-[0_-18px_44px_-14px_rgba(43,35,80,0.35)]"
+                ref={menuRef}
+                onClick={(e) => e.stopPropagation()}
+              >
+                {/* Handle bar */}
+                <div className="flex justify-center pt-3 pb-1">
+                  <div className="w-10 h-1 rounded-full bg-line" />
+                </div>
+                <div className="px-2 pb-4" style={{ paddingBottom: 'max(16px, env(safe-area-inset-bottom))' }}>
+                  {items.map((it) => (
+                    <button
+                      key={it.label}
+                      onClick={() => {
+                        setOpen(false)
+                        it.fn()
+                      }}
+                      className={`w-full flex items-center gap-3 px-5 py-3.5 rounded-2xl text-[15px] font-bold transition-colors min-h-[52px] ${
+                        it.danger ? 'text-[#d63a3a] active:bg-[#ffe9e9]' : 'text-ink-soft active:bg-surface-2 active:text-ink'
+                      }`}
+                    >
+                      <Icon name={it.icon} size={18} />
+                      {it.label}
+                    </button>
+                  ))}
+                </div>
+              </motion.div>
+            </>,
+            document.body,
+          )}
+      </>
+    )
+  }
 
   return (
     <>
@@ -666,7 +733,8 @@ function CardMenu({ onOpen, onRename, onDuplicate, onShare, onDelete }) {
   )
 }
 
-function MindmapCard({ item, index, onOpen, onRename, onDuplicate, onShare, onDelete }) {
+const MindmapCard = memo(function MindmapCard({ item, index, onOpen, onRename, onDuplicate, onShare, onDelete }) {
+  const isDemo = item.title?.includes('(Demo)')
   return (
     <motion.div
       layout
@@ -684,7 +752,12 @@ function MindmapCard({ item, index, onOpen, onRename, onDuplicate, onShare, onDe
           <Icon name="mindmap" size={13} />
           {item.mode === 'auto-layout' ? 'Auto-Layout' : 'Freeform'}
         </span>
-        {item.is_public && (
+        {isDemo && (
+          <span className="absolute top-3 right-3 px-2.5 py-1 rounded-full bg-[#fff6d9] text-[#c47e00] text-[11px] font-extrabold border-[1.5px] border-[#ffe3a3]">
+            ✨ Demo
+          </span>
+        )}
+        {!isDemo && item.is_public && (
           <span className="absolute top-3 right-3 w-8 h-8 rounded-full bg-[#e1faf5] text-[#0e9e92] flex items-center justify-center border-[1.5px] border-mint/30">
             <Icon name="eye" size={15} />
           </span>
@@ -708,9 +781,9 @@ function MindmapCard({ item, index, onOpen, onRename, onDuplicate, onShare, onDe
       </TiltCard>
     </motion.div>
   )
-}
+})
 
-function MasteryRing({ pct, size = 26, stroke = 3.5 }) {
+const MasteryRing = memo(function MasteryRing({ pct, size = 26, stroke = 3.5 }) {
   const r = (size - stroke) / 2
   const c = 2 * Math.PI * r
   return (
@@ -729,10 +802,11 @@ function MasteryRing({ pct, size = 26, stroke = 3.5 }) {
       />
     </svg>
   )
-}
+})
 
-function DeckCard({ item, index, mastery, onOpen, onRename, onDuplicate, onShare, onDelete }) {
+const DeckCard = memo(function DeckCard({ item, index, mastery, onOpen, onRename, onDuplicate, onShare, onDelete }) {
   const c = deckColor(item.color)
+  const isDemo = item.title?.includes('(Demo)')
   return (
     <motion.div
       layout
@@ -761,7 +835,12 @@ function DeckCard({ item, index, mastery, onOpen, onRename, onDuplicate, onShare
             <span className="text-[10px] font-extrabold tracking-wide">FLASHCARD</span>
           </div>
         </div>
-        {item.is_public && (
+        {isDemo && (
+          <span className="absolute top-3 left-3 px-2.5 py-1 rounded-full bg-[#fff6d9] text-[#c47e00] text-[11px] font-extrabold border-[1.5px] border-[#ffe3a3]">
+            ✨ Demo
+          </span>
+        )}
+        {!isDemo && item.is_public && (
           <span className="absolute top-3 left-3 w-8 h-8 rounded-full bg-surface/90 text-[#0e9e92] flex items-center justify-center border-[1.5px] border-mint/40">
             <Icon name="eye" size={15} />
           </span>
@@ -788,4 +867,4 @@ function DeckCard({ item, index, mastery, onOpen, onRename, onDuplicate, onShare
       </TiltCard>
     </motion.div>
   )
-}
+})

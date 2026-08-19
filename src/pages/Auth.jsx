@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import Blobs from '../components/Blobs'
@@ -9,6 +9,7 @@ import { Icon } from '../components/Icons'
 import { supabase, isSupabaseConfigured, AUTH_REDIRECT } from '../lib/supabase'
 import { useAuthStore } from '../store/auth'
 import { toast } from '../store/toast'
+import { createRateLimiter, sanitizeText } from '../lib/sanitize'
 
 export default function Auth() {  const [params, setParams] = useSearchParams()
   // Mode berasal dari URL (?mode=login|register) — satu sumber kebenaran,
@@ -30,6 +31,9 @@ export default function Auth() {  const [params, setParams] = useSearchParams()
     if (user) navigate('/dashboard', { replace: true })
   }, [user, navigate])
 
+  // Rate limiting — maksimal 5 percobaan login per menit
+  const rateLimiterRef = useRef(createRateLimiter({ maxAttempts: 5, windowMs: 60_000 }))
+
   const submit = async (e) => {
     e.preventDefault()
     if (!isSupabaseConfigured) {
@@ -42,6 +46,12 @@ export default function Auth() {  const [params, setParams] = useSearchParams()
     }
     if (password.length < 6) {
       toast.error('Password minimal 6 karakter.')
+      return
+    }
+    // Rate limiting
+    if (!rateLimiterRef.current.canAttempt()) {
+      const cooldown = Math.ceil(rateLimiterRef.current.cooldownMs() / 1000)
+      toast.error(`Terlalu banyak percobaan. Tunggu ${cooldown} detik.`)
       return
     }
     setBusy(true)
@@ -71,7 +81,9 @@ export default function Auth() {  const [params, setParams] = useSearchParams()
         toast.success('Berhasil masuk! 👋')
         navigate('/dashboard')
       }
+      rateLimiterRef.current.record()
     } catch (err) {
+      rateLimiterRef.current.record()
       toast.error(err.message || 'Terjadi kesalahan. Coba lagi.')
     } finally {
       setBusy(false)

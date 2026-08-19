@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { AnimatePresence, motion } from 'framer-motion'
 import PageTransition from '../components/PageTransition'
@@ -164,7 +164,7 @@ export default function Study() {
     }
   }
 
-  // Keyboard: spasi = flip, panah = pindah kartu
+  // Keyboard: spasi = flip, panah = navigasi, angka = rating (SR)
   useEffect(() => {
     if (finished || queue.length === 0) return
     const onKey = (e) => {
@@ -180,11 +180,16 @@ export default function Study() {
       } else if (e.key === 'ArrowLeft' && mode === 'simple' && index > 0) {
         setIndex((i) => i - 1)
         setFlipped(false)
+      } else if (mode === 'sr' && flipped && !busy) {
+        // Angka 1/2/3 = rating cepat saat kartu terbuka
+        if (e.key === '1') rate(0)
+        else if (e.key === '2') rate(1)
+        else if (e.key === '3') rate(2)
       }
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [finished, queue, index, mode])
+  }, [finished, queue, index, mode, flipped, busy])
 
   const color = deckColor(deck?.color)
 
@@ -685,7 +690,7 @@ export default function Study() {
   )
 }
 
-function StudyHeader({ deck, color, total, masteredPct, streak, onOpenList }) {
+const StudyHeader = memo(function StudyHeader({ deck, color, total, masteredPct, streak, onOpenList }) {
   return (
     <div className="flex items-center gap-3 mb-6">
       <Link
@@ -724,9 +729,9 @@ function StudyHeader({ deck, color, total, masteredPct, streak, onOpenList }) {
       </div>
     </div>
   )
-}
+})
 
-function StatCard({ emoji, label, value, color, bg }) {
+const StatCard = memo(function StatCard({ emoji, label, value, color, bg }) {
   return (
     <div className="rounded-3xl border-[1.5px] border-line bg-surface p-5 text-left shadow-[0_10px_30px_-16px_rgba(43,35,80,0.25)]">
       <span
@@ -741,9 +746,9 @@ function StatCard({ emoji, label, value, color, bg }) {
       <p className="text-xs font-bold text-ink-soft mt-0.5">{label}</p>
     </div>
   )
-}
+})
 
-function MasteryBar({ cards, progressMap }) {
+const MasteryBar = memo(function MasteryBar({ cards, progressMap }) {
   const levels = [
     { key: 'new', label: 'Baru', color: '#9b94b6' },
     { key: 'learning', label: 'Belajar', color: '#ff8a5c' },
@@ -779,7 +784,7 @@ function MasteryBar({ cards, progressMap }) {
       </div>
     </div>
   )
-}
+})
 
 function CardListOverlay({ open, onClose, cards, progressMap, color, onPick }) {
   if (!open) return null
@@ -858,7 +863,7 @@ function CardListOverlay({ open, onClose, cards, progressMap, color, onPick }) {
   )
 }
 
-function RatingBtn({ label, emoji, sub, className, onClick, busy }) {
+const RatingBtn = memo(function RatingBtn({ label, emoji, sub, className, onClick, busy }) {
   return (
     <button
       onClick={onClick}
@@ -870,4 +875,4 @@ function RatingBtn({ label, emoji, sub, className, onClick, busy }) {
       <span className="text-[10px] sm:text-[11px] font-bold text-white/80">{sub}</span>
     </button>
   )
-}
+})

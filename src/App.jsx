@@ -5,6 +5,7 @@ import { supabase, isSupabaseConfigured } from './lib/supabase'
 import { useAuthStore } from './store/auth'
 import { useGuestStore } from './store/guest'
 import { getProfile, migrateGuestToAccount } from './lib/storage'
+import { seedDemoContent } from './lib/demo'
 import { toast } from './store/toast'
 import ToastContainer from './components/ui/ToastContainer'
 import Navbar from './components/Navbar'
@@ -22,6 +23,7 @@ const FlashcardEditor = lazy(() => import('./pages/FlashcardEditor'))
 const Study = lazy(() => import('./pages/Study'))
 const Share = lazy(() => import('./pages/Share'))
 const Settings = lazy(() => import('./pages/Settings'))
+const Onboarding = lazy(() => import('./components/Onboarding'))
 
 // ------------------------------------------------------------
 // AuthProvider — menjaga sesi Supabase & profil tetap sinkron,
@@ -115,6 +117,11 @@ export default function App() {
     window.scrollTo(0, 0)
   }, [location.pathname])
 
+  // Seed demo content untuk user pertama kali (guest)
+  useEffect(() => {
+    seedDemoContent()
+  }, [])
+
   return (
     <ErrorBoundary>
       {/* AuthProvider WAJIB selalu ter-mount: dialah yang mematikan layar
@@ -127,6 +134,9 @@ export default function App() {
         <div className="min-h-screen flex flex-col">
           <ScrollProgress />
           <Navbar />
+          <Suspense fallback={null}>
+            <Onboarding />
+          </Suspense>
           <Suspense fallback={<LoadingScreen />}>
             <AnimatePresence mode="wait">
               <Routes location={location} key={location.pathname}>
