@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import PageTransition from '../components/PageTransition'
@@ -238,6 +238,32 @@ export default function FlashcardEditor() {
     scheduleSave(() => updateDeck(id, { title: safe }))
   }
 
+  // ---------- Keyboard shortcuts ----------
+  useEffect(() => {
+    const onKey = (e) => {
+      const tag = e.target.tagName
+      if (tag === 'INPUT' || tag === 'TEXTAREA') return
+      // Ctrl/Cmd + D = duplicate kartu
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'd') {
+        e.preventDefault()
+        duplicateCard()
+        return
+      }
+      // Arrow keys = navigasi kartu
+      if (e.key === 'ArrowDown' || e.key === 'ArrowRight') {
+        e.preventDefault()
+        const idx = cards.findIndex((c) => c.id === selectedId)
+        if (idx >= 0 && idx < cards.length - 1) setSelectedId(cards[idx + 1].id)
+      } else if (e.key === 'ArrowUp' || e.key === 'ArrowLeft') {
+        e.preventDefault()
+        const idx = cards.findIndex((c) => c.id === selectedId)
+        if (idx > 0) setSelectedId(cards[idx - 1].id)
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [cards, selectedId, duplicateCard])
+
   const emptyCards = useMemo(() => cards.length === 0, [cards])
   const realIndex = (cardId) => cards.findIndex((c) => c.id === cardId)
 
@@ -475,7 +501,7 @@ export default function FlashcardEditor() {
                   </motion.div>
                 ))}
                 <p className="text-xs text-ink-faint text-center pt-1.5">
-                  💡 Seret kartu untuk mengubah urutan
+                  💡 Seret untuk ubah urutan · ↑↓ navigasi · Ctrl+D duplikat
                 </p>
               </div>
             )}

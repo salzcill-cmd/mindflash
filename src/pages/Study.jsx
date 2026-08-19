@@ -191,6 +191,40 @@ export default function Study() {
     return () => window.removeEventListener('keydown', onKey)
   }, [finished, queue, index, mode, flipped, busy])
 
+  // Swipe gesture (mobile): geser kartu kiri/kanan
+  const touchRef = useRef({ x: 0, y: 0 })
+  const onTouchStart = useCallback((e) => {
+    const t = e.touches[0]
+    touchRef.current = { x: t.clientX, y: t.clientY }
+  }, [])
+
+  const onTouchEnd = useCallback((e) => {
+    if (finished || queue.length === 0) return
+    const t = e.changedTouches[0]
+    const dx = t.clientX - touchRef.current.x
+    const dy = t.clientY - touchRef.current.y
+    // Hanya trigger kalau horizontal swipe lebih dominan dari vertikal
+    if (Math.abs(dx) < 50 || Math.abs(dx) < Math.abs(dy) * 1.5) return
+    if (mode === 'quiz') return
+    if (mode === 'simple') {
+      if (dx < 0 && index < queue.length - 1) {
+        setIndex((i) => i + 1)
+        setFlipped(false)
+      } else if (dx > 0 && index > 0) {
+        setIndex((i) => i - 1)
+        setFlipped(false)
+      }
+    } else if (mode === 'sr') {
+      // Swipe left pada SR = flip kartu; swipe right = kembali
+      if (dx < 0 && !flipped) {
+        setFlipped(true)
+      } else if (dx > 0 && flipped && !busy && index > 0) {
+        setIndex((i) => i - 1)
+        setFlipped(false)
+      }
+    }
+  }, [finished, queue, index, mode, flipped, busy])
+
   const color = deckColor(deck?.color)
 
   // ============================================================
@@ -458,7 +492,11 @@ export default function Study() {
         </div>
 
         {/* Kartu / pertanyaan */}
-        <div className="flex-1 min-h-[340px] sm:min-h-[400px] relative">
+        <div
+          className="flex-1 min-h-[340px] sm:min-h-[400px] relative"
+          onTouchStart={onTouchStart}
+          onTouchEnd={onTouchEnd}
+        >
           <AnimatePresence mode="wait">
             <motion.div
               key={current.id + (isQuiz ? '-q' : flipped ? '-f' : '')}

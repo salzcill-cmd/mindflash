@@ -17,6 +17,29 @@ const err = (e, fallback = 'Terjadi kesalahan saat menyimpan data') => {
   throw new Error(e?.message || fallback)
 }
 
+/** Retry helper — coba ulangi operasi network max `n` kali dengan backoff. */
+async function withRetry(fn, { retries = 2, delayMs = 600 } = {}) {
+  let lastErr
+  for (let i = 0; i <= retries; i++) {
+    try {
+      return await fn()
+    } catch (e) {
+      lastErr = e
+      if (i < retries && isNetworkError(e)) {
+        await new Promise((r) => setTimeout(r, delayMs * (i + 1)))
+      } else {
+        break
+      }
+    }
+  }
+  throw lastErr
+}
+
+function isNetworkError(e) {
+  const msg = (e?.message ?? '').toLowerCase()
+  return msg.includes('network') || msg.includes('fetch') || msg.includes('timeout') || msg.includes('failed to fetch') || e?.name === 'TypeError'
+}
+
 // ============================================================
 // MINDMAPS
 // ============================================================
@@ -66,15 +89,17 @@ export async function updateMindmap(id, patch) {
     useGuestStore.getState().updateMindmap(id, patch)
     return { id, ...patch }
   }
-  const { data, error } = await supabase
-    .from('mindmaps')
-    .update({ ...patch, updated_at: new Date().toISOString() })
-    .eq('id', id)
-    .eq('user_id', currentUserId())
-    .select()
-    .single()
-  if (error) err(error)
-  return data
+  return withRetry(async () => {
+    const { data, error } = await supabase
+      .from('mindmaps')
+      .update({ ...patch, updated_at: new Date().toISOString() })
+      .eq('id', id)
+      .eq('user_id', currentUserId())
+      .select()
+      .single()
+    if (error) err(error)
+    return data
+  })
 }
 
 export async function deleteMindmap(id) {
@@ -171,15 +196,17 @@ export async function updateDeck(id, patch) {
     useGuestStore.getState().updateDeck(id, patch)
     return { id, ...patch }
   }
-  const { data, error } = await supabase
-    .from('flashcard_decks')
-    .update(patch)
-    .eq('id', id)
-    .eq('user_id', currentUserId())
-    .select()
-    .single()
-  if (error) err(error)
-  return data
+  return withRetry(async () => {
+    const { data, error } = await supabase
+      .from('flashcard_decks')
+      .update(patch)
+      .eq('id', id)
+      .eq('user_id', currentUserId())
+      .select()
+      .single()
+    if (error) err(error)
+    return data
+  })
 }
 
 export async function deleteDeck(id) {
@@ -246,15 +273,17 @@ export async function updateCard(deckId, cardId, patch) {
     useGuestStore.getState().updateCard(deckId, cardId, patch)
     return { id: cardId, ...patch }
   }
-  const { data, error } = await supabase
-    .from('flashcards')
-    .update(patch)
-    .eq('id', cardId)
-    .eq('deck_id', deckId)
-    .select()
-    .single()
-  if (error) err(error)
-  return data
+  return withRetry(async () => {
+    const { data, error } = await supabase
+      .from('flashcards')
+      .update(patch)
+      .eq('id', cardId)
+      .eq('deck_id', deckId)
+      .select()
+      .single()
+    if (error) err(error)
+    return data
+  })
 }
 
 export async function deleteCard(deckId, cardId) {
@@ -427,16 +456,18 @@ export async function saveProgress(cardId, progress) {
     useGuestStore.getState().setProgress(cardId, progress)
     return { flashcard_id: cardId, ...progress }
   }
-  const { data, error } = await supabase
-    .from('flashcard_progress')
-    .upsert(
-      { user_id: currentUserId(), flashcard_id: cardId, ...progress },
-      { onConflict: 'user_id,flashcard_id' },
-    )
-    .select()
-    .single()
-  if (error) err(error)
-  return data
+  return withRetry(async () => {
+    const { data, error } = await supabase
+      .from('flashcard_progress')
+      .upsert(
+        { user_id: currentUserId(), flashcard_id: cardId, ...progress },
+        { onConflict: 'user_id,flashcard_id' },
+      )
+      .select()
+      .single()
+    if (error) err(error)
+    return data
+  })
 }
 
 // ============================================================

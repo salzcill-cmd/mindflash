@@ -44,6 +44,12 @@ export default function Auth() {  const [params, setParams] = useSearchParams()
       toast.error('Email dan password wajib diisi.')
       return
     }
+    // Validasi format email
+    const emailRe = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    if (!emailRe.test(email.trim())) {
+      toast.error('Format email tidak valid.')
+      return
+    }
     if (password.length < 6) {
       toast.error('Password minimal 6 karakter.')
       return
@@ -218,6 +224,9 @@ export default function Auth() {  const [params, setParams] = useSearchParams()
                   <Icon name={showPw ? 'eye-off' : 'eye'} size={18} />
                 </button>
               </div>
+              {mode === 'register' && password.length > 0 && (
+                <PasswordStrength pw={password} />
+              )}
             </Field>
             {mode === 'login' && (
               <button
@@ -261,5 +270,38 @@ export default function Auth() {  const [params, setParams] = useSearchParams()
         </motion.div>
       </div>
     </PageTransition>
+  )
+}
+
+/** Password strength indicator — hanya tampil saat registrasi. */
+function PasswordStrength({ pw }) {
+  let score = 0
+  if (pw.length >= 6) score++
+  if (pw.length >= 8) score++
+  if (/[A-Z]/.test(pw) && /[a-z]/.test(pw)) score++
+  if (/\d/.test(pw)) score++
+  if (/[^A-Za-z0-9]/.test(pw)) score++
+  const levels = [
+    { label: 'Sangat lemah', color: '#ff5d5d', pct: 10 },
+    { label: 'Lemah', color: '#ff8a5c', pct: 30 },
+    { label: 'Sedang', color: '#ffb627', pct: 50 },
+    { label: 'Kuat', color: '#4cc9f0', pct: 75 },
+    { label: 'Sangat kuat', color: '#2ec4b6', pct: 100 },
+  ]
+  const lvl = levels[Math.min(score, levels.length - 1)]
+  return (
+    <div className="mt-2">
+      <div className="flex items-center gap-2 mb-1">
+        <div className="flex-1 h-1.5 rounded-full bg-surface-2 overflow-hidden">
+          <div
+            className="h-full rounded-full transition-all duration-300"
+            style={{ width: `${lvl.pct}%`, backgroundColor: lvl.color }}
+          />
+        </div>
+        <span className="text-[11px] font-extrabold" style={{ color: lvl.color }}>
+          {lvl.label}
+        </span>
+      </div>
+    </div>
   )
 }
