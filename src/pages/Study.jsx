@@ -12,7 +12,7 @@ import { deckColor } from '../lib/constants'
 import { gradeCard, isDue, masteryLevel, MASTERY_LABELS } from '../lib/sm2'
 import { getStreak, registerStudy } from '../lib/streak'
 import { getDeck, getProgressForCards, saveProgress } from '../lib/storage'
-import { shuffleArr, buildOptions } from '../lib/quiz'
+import { shuffleArr, buildOptions, checkTypedAnswer } from '../lib/quiz'
 
 export default function Study() {
   const { id } = useParams()
@@ -34,8 +34,10 @@ export default function Study() {
   const [quiz, setQuiz] = useState({}) // { [cardId]: { selected, answered } }
   const [quizScore, setQuizScore] = useState(0)
   const [quizOptions, setQuizOptions] = useState({}) // { [cardId]: [opsi] }
-  const [missedIds, setMissedIds] = useState([]) // kartu berperingkat "Belum Hafal" di sesi SR
+  const [missedIds, setMissedIds] = useState([]) // kartu yang dijawab salah / "Belum Hafal"
   const [showList, setShowList] = useState(false) // daftar kartu (overview)
+  const [typedValue, setTypedValue] = useState('')
+  const [typedResult, setTypedResult] = useState(null) // null | 'correct' | 'wrong'
 
   // ---------- Load ----------
   useEffect(() => {
@@ -79,6 +81,8 @@ export default function Study() {
     setQuiz({})
     setQuizScore(0)
     setMissedIds([])
+    setTypedValue('')
+    setTypedResult(null)
     if (m === 'quiz') {
       const opts = {}
       cards.forEach((c) => {
@@ -99,6 +103,8 @@ export default function Study() {
     setQuiz({})
     setQuizScore(0)
     setMissedIds([])
+    setTypedValue('')
+    setTypedResult(null)
   }
 
   const replayMissed = () => {
@@ -113,6 +119,8 @@ export default function Study() {
     setQuiz({})
     setQuizScore(0)
     setMissedIds([])
+    setTypedValue('')
+    setTypedResult(null)
     toast.info(`${ids.length} kartu belum hafal — ayo ulangi sampai lancar! 💪`)
   }
 
@@ -122,30 +130,34 @@ export default function Study() {
     setFinished(true)
   }
 
+  // Simpan hasil penilaian ke jadwal SM-2 (dipakai mode SR, Kuis, dan Ketik)
+  const applyGrade = async (cardId, grade) => {
+    const prev = progressMap[cardId]
+    const next = gradeCard(grade, prev)
+    setProgressMap((m) => ({ ...m, [cardId]: next }))
+    try {
+      await saveProgress(cardId, next)
+    } catch (e) {
+      toast.error(e.message)
+    }
+    if (grade === 0) {
+      setMissedIds((ids) => (ids.includes(cardId) ? ids : [...ids, cardId]))
+    }
+  }
+
   const rate = async (grade) => {
     if (busy) return
     setBusy(true)
-    try {
-      const cardId = queue[index]
-      const prev = progressMap[cardId]
-      const next = gradeCard(grade, prev)
-      setProgressMap((m) => ({ ...m, [cardId]: next }))
-      await saveProgress(cardId, next)
-      setSessionCount((c) => c + 1)
-      if (grade === 0) {
-        setMissedIds((prev) => (prev.includes(cardId) ? prev : [...prev, cardId]))
-      }
-      if (index + 1 < queue.length) {
-        setIndex((i) => i + 1)
-        setFlipped(false)
-      } else {
-        finish()
-      }
-    } catch (e) {
-      toast.error(e.message)
-    } finally {
-      setBusy(false)
+    const cardId = queue[index]
+    await applyGrade(cardId, grade)
+    setSessionCount((c) => c + 1)
+    if (index + 1 < queue.length) {
+      setIndex((i) => i + 1)
+      setFlipped(false)
+    } else {
+      finish()
     }
+    setBusy(false)
   }
 
   const answerQuiz = (opt) => {
@@ -154,11 +166,25 @@ export default function Study() {
     setQuiz((q) => ({ ...q, [current.id]: { selected: opt, answered: true } }))
     if (isCorrect) setQuizScore((s) => s + 1)
     setSessionCount((c) => c + 1)
+    // Jawaban kuis ikut menjadwalkan review hafalan pintar
+    applyGrade(current.id, isCorrect ? 2 : 0)
   }
 
-  const nextQuiz = () => {
+  const submitTyped = () => {
+    if (!current || typedResult || !typedValue.trim()) return
+    const isCorrect = checkTypedAnswer(typedValue, current.back_text || '')
+    setTypedResult(isCorrect ? 'correct' : 'wrong')
+    if (isCorrect) setQuizScore((s) => s + 1)
+    setSessionCount((c) => c + 1)
+    applyGrade(current.id, isCorrect ? 2 : 0)
+  }
+
+  const nextCard = () => {
+    setTypedValue('')
+    setTypedResult(null)
     if (index + 1 < queue.length) {
       setIndex((i) => i + 1)
+      setFlipped(false)
     } else {
       finish()
     }
@@ -170,7 +196,7 @@ export default function Study() {
     const onKey = (e) => {
       const tag = e.target.tagName
       if (tag === 'INPUT' || tag === 'TEXTAREA') return
-      if (mode === 'quiz') return
+      if (mode === 'quiz' || mode === 'typed') return
       if (e.key === ' ' || e.key === 'Enter') {
         e.preventDefault()
         setFlipped((v) => !v)
@@ -205,7 +231,7 @@ export default function Study() {
     const dy = t.clientY - touchRef.current.y
     // Hanya trigger kalau horizontal swipe lebih dominan dari vertikal
     if (Math.abs(dx) < 50 || Math.abs(dx) < Math.abs(dy) * 1.5) return
-    if (mode === 'quiz') return
+    if (mode === 'quiz' || mode === 'typed') return
     if (mode === 'simple') {
       if (dx < 0 && index < queue.length - 1) {
         setIndex((i) => i + 1)
@@ -313,24 +339,22 @@ export default function Study() {
             <StatCard emoji="📊" label="Dari total" value={`${masteredCount}/${total}`} color="#2ec4b6" bg="#e1faf5" />
             <StatCard emoji="🧠" label={isQuiz ? 'Akurasi' : 'Review hari ini'} value={isQuiz ? `${Math.round((quizScore / (sessionCount || 1)) * 100)}%` : `${sessionCount} kartu`} color="#4cc9f0" bg="#e4f7fe" />
           </div>
-          {!isQuiz && (
-            <motion.div
-              initial={{ opacity: 0, y: 14 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.15 }}
-              className="bg-surface rounded-3xl border-[1.5px] border-line p-5 mb-8 text-left shadow-[0_10px_30px_-16px_rgba(43,35,80,0.2)]"
-            >
-              <p className="text-sm font-extrabold text-ink mb-3">📊 Distribusi penguasaan</p>
-              <MasteryBar cards={cards} progressMap={progressMap} />
-            </motion.div>
-          )}
+          <motion.div
+            initial={{ opacity: 0, y: 14 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.15 }}
+            className="bg-surface rounded-3xl border-[1.5px] border-line p-5 mb-8 text-left shadow-[0_10px_30px_-16px_rgba(43,35,80,0.2)]"
+          >
+            <p className="text-sm font-extrabold text-ink mb-3">📊 Distribusi penguasaan</p>
+            <MasteryBar cards={cards} progressMap={progressMap} />
+          </motion.div>
           <div className="flex flex-col sm:flex-row gap-3 justify-center">
             <Link to={`/flashcard/${id}`}>
               <Button variant="white" size="lg" icon={<Icon name="pen" size={17} />}>
                 Edit Deck
               </Button>
             </Link>
-            {missed > 0 && mode === 'sr' ? (
+            {missed > 0 ? (
               <Button
                 size="lg"
                 variant="pink"
@@ -351,14 +375,6 @@ export default function Study() {
             )}
           </div>
         </div>
-        <CardListOverlay
-          open={showList}
-          onClose={() => setShowList(false)}
-          cards={cards}
-          progressMap={progressMap}
-          color={color}
-          onPick={startAt}
-        />
       </PageTransition>
     )
   }
@@ -449,6 +465,7 @@ export default function Study() {
               ['sr', '🧠 Hafalan Pintar'],
               ['simple', '🔄 Simpel'],
               ['quiz', '🎯 Kuis'],
+              ['typed', '⌨️ Ketik'],
             ].map(([key, label]) => (
               <button
                 key={key}
@@ -506,7 +523,7 @@ export default function Study() {
               transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
               className="absolute inset-0"
             >
-              {isQuiz ? (
+              {isQuiz || mode === 'typed' ? (
                 <div
                   className="w-full h-full rounded-[28px] border-[2.5px] overflow-hidden shadow-[0_24px_60px_-24px_rgba(43,35,80,0.45)] flex flex-col bg-surface"
                   style={{ borderColor: color.bg }}
@@ -522,7 +539,7 @@ export default function Study() {
                       className="w-7 h-7 rounded-full flex items-center justify-center"
                       style={{ backgroundColor: color.soft }}
                     >
-                      <Icon name="target" size={14} style={{ color: color.bg }} />
+                      <Icon name={isQuiz ? 'target' : 'pen'} size={14} style={{ color: color.bg }} />
                     </span>
                   </div>
                   <div className="flex-1 flex flex-col items-center justify-center gap-3 px-6 py-4 overflow-auto">
@@ -536,10 +553,20 @@ export default function Study() {
                     <p className="text-ink font-display font-extrabold text-xl sm:text-2xl text-center leading-snug break-words">
                       {current.front_text || '…'}
                     </p>
+                    {mode === 'typed' && typedResult && (
+                      <motion.p
+                        initial={{ opacity: 0, y: 8 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className={`text-sm font-extrabold ${typedResult === 'correct' ? 'text-[#0e9e92]' : 'text-[#d63a3a]'}`}
+                      >
+                        {typedResult === 'correct' ? '✅ Jawabanmu tepat!' : `❌ Jawaban: ${current.back_text}`}
+                      </motion.p>
+                    )}
                   </div>
                   <div className="pb-4 flex justify-center">
                     <span className="px-3 py-1.5 rounded-full bg-surface-2 text-ink-soft text-[11px] font-extrabold flex items-center gap-1.5">
-                      <Icon name="spark" size={13} /> Pilih jawaban yang tepat
+                      <Icon name="spark" size={13} />{' '}
+                      {isQuiz ? 'Pilih jawaban yang tepat' : 'Ketik jawaban lalu tekan Enter'}
                     </span>
                   </div>
                 </div>
@@ -587,7 +614,7 @@ export default function Study() {
                   variant="primary"
                   size="lg"
                   fullWidth
-                  onClick={nextQuiz}
+                  onClick={nextCard}
                   icon={<Icon name={index < queue.length - 1 ? 'chevron-right' : 'circle-check'} size={18} />}
                 >
                   {index < queue.length - 1 ? 'Lanjut' : 'Lihat Hasil'}
@@ -630,6 +657,73 @@ export default function Study() {
                   )
                 })}
               </motion.div>
+            )
+          ) : mode === 'typed' ? (
+            typedResult ? (
+              <motion.div
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="flex flex-col items-center gap-3"
+              >
+                <div
+                  className={`w-full rounded-2xl px-5 py-4 text-center font-extrabold text-[15px] border-[1.5px] ${
+                    typedResult === 'correct'
+                      ? 'bg-[#e1faf5] text-[#0e9e92] border-mint/40'
+                      : 'bg-[#ffe9e9] text-[#d63a3a] border-[#ffc9c9]'
+                  }`}
+                >
+                  {typedResult === 'correct' ? (
+                    <>🎉 Benar! Jawabanmu: {typedValue.trim()}</>
+                  ) : (
+                    <>
+                      ❌ Kurang tepat. Jawaban benar:{' '}
+                      <b className="text-ink">{current.back_text}</b>
+                    </>
+                  )}
+                </div>
+                <Button
+                  variant="primary"
+                  size="lg"
+                  fullWidth
+                  onClick={nextCard}
+                  icon={<Icon name={index < queue.length - 1 ? 'chevron-right' : 'circle-check'} size={18} />}
+                >
+                  {index < queue.length - 1 ? 'Lanjut' : 'Lihat Hasil'}
+                </Button>
+              </motion.div>
+            ) : (
+              <motion.form
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                onSubmit={(e) => {
+                  e.preventDefault()
+                  submitTyped()
+                }}
+                className="flex flex-col gap-3"
+              >
+                <input
+                  key={current.id}
+                  autoFocus
+                  value={typedValue}
+                  onChange={(e) => setTypedValue(e.target.value)}
+                  placeholder="Ketik jawabanmu di sini…"
+                  aria-label="Jawabanmu"
+                  autoComplete="off"
+                  autoCapitalize="off"
+                  spellCheck={false}
+                  className="w-full bg-surface border-[2px] border-line rounded-2xl px-5 py-4 text-center text-lg font-extrabold text-ink placeholder:text-ink-faint/60 focus:border-brand focus:outline-none focus:ring-4 focus:ring-brand/15 transition-all"
+                />
+                <Button
+                  type="submit"
+                  variant="primary"
+                  size="lg"
+                  fullWidth
+                  disabled={!typedValue.trim()}
+                  icon={<Icon name="check" size={18} />}
+                >
+                  Periksa Jawaban
+                </Button>
+              </motion.form>
             )
           ) : isSimple ? (
             <div className="flex items-center justify-center gap-3">

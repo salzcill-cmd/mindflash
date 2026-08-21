@@ -34,6 +34,7 @@ import {
   setMindmapPublic,
   setDeckPublic,
   getDecksMastery,
+  getDueCountsByDeck,
 } from '../lib/storage'
 
 export default function Dashboard() {
@@ -54,6 +55,7 @@ export default function Dashboard() {
   const [templateOpen, setTemplateOpen] = useState(false)
   const [sort, setSort] = useState('baru') // baru | lama | az
   const [deckMastery, setDeckMastery] = useState({})
+  const [dueInfo, setDueInfo] = useState({ total: 0, topDeckId: null })
   const lastDeletedRef = useRef(null) // backup item terhapus untuk undo
 
   const refresh = async () => {
@@ -63,6 +65,15 @@ export default function Dashboard() {
       setDecks(dks ?? [])
       const mastery = await getDecksMastery((dks ?? []).map((d) => d.id))
       setDeckMastery(mastery)
+      // Hitung kartu yang perlu direview hari ini (untuk stat "Perlu Review")
+      const dueCounts = await getDueCountsByDeck((dks ?? []).map((d) => d.id))
+      let totalDue = 0
+      let top = null
+      Object.entries(dueCounts ?? {}).forEach(([deckId, n]) => {
+        totalDue += n
+        if (n > 0 && (!top || n > top.count)) top = { id: deckId, count: n }
+      })
+      setDueInfo({ total: totalDue, topDeckId: top?.id ?? null })
     } catch (e) {
       toast.error(e.message)
     } finally {
@@ -216,6 +227,17 @@ export default function Dashboard() {
     { label: 'Deck', value: decks.length, emoji: '🎴', bg: '#ffeaf4', color: '#c92f78' },
     { label: 'Kartu', value: totalCards, emoji: '🃏', bg: '#e1faf5', color: '#0e9e92' },
     { label: 'Streak', value: `${streak} hari`, emoji: '🔥', bg: '#fff6d9', color: '#c47e00' },
+    {
+      label: 'Perlu Review',
+      value: dueInfo.total,
+      emoji: '⏰',
+      bg: '#ffe9e9',
+      color: '#d63a3a',
+      onClick:
+        dueInfo.total > 0 && dueInfo.topDeckId
+          ? () => navigate(`/flashcard/${dueInfo.topDeckId}/study`)
+          : undefined,
+    },
   ]
 
   return (
@@ -261,14 +283,30 @@ export default function Dashboard() {
           </div>
 
           {/* Statistik ringkas */}
-          <div className="mt-6 grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <div className="mt-6 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
             {statPills.map((s, i) => (
               <motion.div
                 key={s.label}
                 initial={{ opacity: 0, y: 12 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.1 + i * 0.05, duration: 0.35 }}
-                className="flex items-center gap-3 bg-surface rounded-2xl border-[1.5px] border-line px-4 py-3 shadow-[0_8px_22px_-14px_rgba(43,35,80,0.2)]"
+                onClick={s.onClick}
+                role={s.onClick ? 'button' : undefined}
+                tabIndex={s.onClick ? 0 : undefined}
+                onKeyDown={
+                  s.onClick
+                    ? (e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault()
+                          s.onClick()
+                        }
+                      }
+                    : undefined
+                }
+                title={s.onClick ? 'Mulai belajar deck dengan review terbanyak' : undefined}
+                className={`flex items-center gap-3 bg-surface rounded-2xl border-[1.5px] border-line px-4 py-3 shadow-[0_8px_22px_-14px_rgba(43,35,80,0.2)] ${
+                  s.onClick ? 'tap cursor-pointer hover:border-brand/50 hover:-translate-y-0.5 transition-all' : ''
+                }`}
               >
                 <span
                   className="w-10 h-10 rounded-xl flex items-center justify-center text-xl shrink-0"

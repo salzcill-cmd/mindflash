@@ -8,7 +8,7 @@
 import { supabase } from './supabase'
 import { useAuthStore } from '../store/auth'
 import { useGuestStore } from '../store/guest'
-import { masteryLevel } from './sm2'
+import { masteryLevel, isDue } from './sm2'
 
 const currentUserId = () => useAuthStore.getState().user?.id ?? null
 
@@ -428,26 +428,60 @@ export async function getDecksMastery(deckIds) {
       .select('flashcard_id, ease_factor, interval_days, next_review_at, last_reviewed_at')
       .eq('user_id', currentUserId())
       .in('flashcard_id', cardIds)
-    if (prog && prog.length > 0) {
-      const pm = {}
-      ;(prog ?? []).forEach((p) => {
-        pm[p.flashcard_id] = p
-      })
-      const counts = {}
-      cards.forEach((c) => {
-        counts[c.deck_id] = counts[c.deck_id] ?? { total: 0, mastered: 0 }
-        counts[c.deck_id].total += 1
-        if (masteryLevel(pm[c.id]) === 'mastered') counts[c.deck_id].mastered += 1
-      })
-      Object.entries(counts).forEach(([deckId, c]) => {
-        result[deckId] = {
-          total: c.total,
-          mastered: c.mastered,
-          pct: c.total ? Math.round((c.mastered / c.total) * 100) : 0,
-        }
-      })
-    }
+    // Kartu tanpa baris progres tetap dihitung (penguasaan 0%)
+    const pm = {}
+    ;(prog ?? []).forEach((p) => {
+      pm[p.flashcard_id] = p
+    })
+    const counts = {}
+    cards.forEach((c) => {
+      counts[c.deck_id] = counts[c.deck_id] ?? { total: 0, mastered: 0 }
+      counts[c.deck_id].total += 1
+      if (masteryLevel(pm[c.id]) === 'mastered') counts[c.deck_id].mastered += 1
+    })
+    Object.entries(counts).forEach(([deckId, c]) => {
+      result[deckId] = {
+        total: c.total,
+        mastered: c.mastered,
+        pct: c.total ? Math.round((c.mastered / c.total) * 100) : 0,
+      }
+    })
   }
+  return result
+}
+
+/** Jumlah kartu yang jatuh tempo direview hari ini, per deck. */
+export async function getDueCountsByDeck(deckIds) {
+  const result = {}
+  const ids = [...new Set(deckIds)].filter(Boolean)
+  if (ids.length === 0) return result
+
+  if (!currentUserId()) {
+    const { decks, progress } = useGuestStore.getState()
+    decks
+      .filter((d) => ids.includes(d.id))
+      .forEach((d) => {
+        result[d.id] = (d.cards ?? []).filter((c) => isDue(progress[c.id])).length
+      })
+    return result
+  }
+
+  const { data: cards } = await supabase.from('flashcards').select('id, deck_id').in('deck_id', ids)
+  if (!cards || cards.length === 0) return result
+  const cardIds = cards.map((c) => c.id)
+  const { data: prog } = await supabase
+    .from('flashcard_progress')
+    .select('flashcard_id, next_review_at')
+    .eq('user_id', currentUserId())
+    .in('flashcard_id', cardIds)
+  const pm = {}
+  ;(prog ?? []).forEach((p) => {
+    pm[p.flashcard_id] = p
+  })
+  cards.forEach((c) => {
+    // Kartu belum pernah dipelajari juga dianggap due
+    result[c.deck_id] = (result[c.deck_id] ?? 0) + (isDue(pm[c.id]) ? 1 : 0)
+  })
   return result
 }
 
