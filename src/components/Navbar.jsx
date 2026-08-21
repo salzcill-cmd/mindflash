@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { memo, useEffect, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { AnimatePresence, motion } from 'framer-motion'
 import Logo from './ui/Logo'
@@ -9,7 +9,13 @@ import { supabase } from '../lib/supabase'
 import { toast } from '../store/toast'
 import { getTheme, setTheme } from '../lib/theme'
 
-export default function Navbar() {
+// Preload route bundle saat user hover — biar navigasi terasa instan
+const preloadMap = {
+  '/dashboard': () => import('../pages/Dashboard'),
+  '/settings': () => import('../pages/Settings'),
+}
+
+const Navbar = memo(function Navbar() {
   const user = useAuthStore((s) => s.user)
   const profile = useAuthStore((s) => s.profile)
   const navigate = useNavigate()
@@ -56,6 +62,7 @@ export default function Navbar() {
         <nav className="hidden md:flex items-center gap-1">
           <Link
             to="/dashboard"
+            onMouseEnter={() => preloadMap['/dashboard']?.()}
             className="px-4 py-2 rounded-xl text-[15px] font-bold text-ink-soft hover:text-ink hover:bg-surface-2 transition-colors"
           >
             Dashboard
@@ -197,4 +204,6 @@ export default function Navbar() {
       </AnimatePresence>
     </header>
   )
-}
+})
+
+export default Navbar

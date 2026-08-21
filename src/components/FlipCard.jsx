@@ -1,10 +1,11 @@
+import { memo } from 'react'
 import { Icon } from './Icons'
 
 /**
  * Kartu flashcard dengan animasi flip 3D.
  * Dipakai di Flashcard Editor, Study Mode, dan halaman Share.
  */
-export default function FlipCard({
+const FlipCard = memo(function FlipCard({
   front,
   back,
   imageUrl,

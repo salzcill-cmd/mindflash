@@ -1,7 +1,8 @@
+import { memo } from 'react'
 import { Link } from 'react-router-dom'
 import Logo from './ui/Logo'
 
-export default function Footer() {
+const Footer = memo(function Footer() {
   return (
     <footer className="relative mt-auto border-t-[1.5px] border-line bg-surface/60 backdrop-blur">
       <div className="mx-auto max-w-6xl px-4 sm:px-6 py-10 flex flex-col sm:flex-row items-center justify-between gap-6">
@@ -28,4 +29,6 @@ export default function Footer() {
       </div>
     </footer>
   )
-}
+})
+
+export default Footer
