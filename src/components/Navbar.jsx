@@ -13,6 +13,7 @@ import { getTheme, setTheme } from '../lib/theme'
 const preloadMap = {
   '/dashboard': () => import('../pages/Dashboard'),
   '/settings': () => import('../pages/Settings'),
+  '/auth': () => import('../pages/Auth'),
 }
 
 const Navbar = memo(function Navbar() {
@@ -120,6 +121,7 @@ const Navbar = memo(function Navbar() {
                     <Link
                       to="/dashboard"
                       onClick={() => setUserMenu(false)}
+                      onMouseEnter={() => preloadMap['/dashboard']?.()}
                       className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-sm font-bold text-ink-soft hover:bg-surface-2 hover:text-ink"
                     >
                       <Icon name="grid" size={17} /> Dashboard
@@ -127,6 +129,7 @@ const Navbar = memo(function Navbar() {
                     <Link
                       to="/settings"
                       onClick={() => setUserMenu(false)}
+                      onMouseEnter={() => preloadMap['/settings']?.()}
                       className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-sm font-bold text-ink-soft hover:bg-surface-2 hover:text-ink"
                     >
                       <Icon name="gear" size={17} /> Pengaturan
@@ -143,12 +146,12 @@ const Navbar = memo(function Navbar() {
             </div>
           ) : (
             <>
-              <Link to="/auth?mode=login" className="hidden sm:block">
+              <Link to="/auth?mode=login" onMouseEnter={() => preloadMap['/auth']?.()} className="hidden sm:block">
                 <Button variant="ghost" size="sm">
                   Masuk
                 </Button>
               </Link>
-              <Link to="/auth?mode=register">
+              <Link to="/auth?mode=register" onMouseEnter={() => preloadMap['/auth']?.()}>
                 <Button size="sm" icon={<Icon name="spark" size={16} />}>
                   Daftar Gratis
                 </Button>
@@ -180,6 +183,7 @@ const Navbar = memo(function Navbar() {
               <Link
                 to="/dashboard"
                 onClick={() => setMenuOpen(false)}
+                onMouseEnter={() => preloadMap['/dashboard']?.()}
                 className="px-4 py-3 rounded-xl font-bold text-ink-soft hover:bg-surface-2"
               >
                 Dashboard

@@ -1,3 +1,4 @@
+import { memo } from 'react'
 import { motion, useScroll, useSpring } from 'framer-motion'
 
 /**
@@ -5,7 +6,7 @@ import { motion, useScroll, useSpring } from 'framer-motion'
  * GPU-friendly (hanya transform scaleX) dan menonaktifkan diri saat
  * halaman tidak bisa discroll (mis. editor mindmap full-height).
  */
-export default function ScrollProgress() {
+const ScrollProgress = memo(function ScrollProgress() {
   const { scrollYProgress } = useScroll()
   const scaleX = useSpring(scrollYProgress, { stiffness: 140, damping: 30, restDelta: 0.001 })
 
@@ -16,4 +17,6 @@ export default function ScrollProgress() {
       aria-hidden="true"
     />
   )
-}
+})
+
+export default ScrollProgress

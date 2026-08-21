@@ -1,6 +1,7 @@
+import { memo } from 'react'
 import { motion } from 'framer-motion'
 
-export default function PageTransition({ children, className = '' }) {
+const PageTransition = memo(function PageTransition({ children, className = '' }) {
   return (
     <motion.main
       initial={{ opacity: 0, y: 12 }}
@@ -12,4 +13,6 @@ export default function PageTransition({ children, className = '' }) {
       {children}
     </motion.main>
   )
-}
+})
+
+export default PageTransition

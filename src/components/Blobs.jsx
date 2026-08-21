@@ -1,8 +1,10 @@
+import { memo } from 'react'
+
 /**
  * Elemen dekoratif organik: blob warna-warni lembut + bentuk kecil mengambang.
  * GPU-friendly (hanya transform + opacity).
  */
-export default function Blobs({ variant = 'default' }) {
+const Blobs = memo(function Blobs({ variant = 'default' }) {
   return (
     <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden>
       <div
@@ -30,4 +32,6 @@ export default function Blobs({ variant = 'default' }) {
       )}
     </div>
   )
-}
+})
+
+export default Blobs

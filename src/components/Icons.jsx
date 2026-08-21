@@ -238,7 +238,9 @@ const ELEMENTS = {
   moon: <path d="M20.5 14.6A8.5 8.5 0 019.4 3.5 8.5 8.5 0 1020.5 14.6z" />,
 }
 
-export function Icon({ name, size = 20, className = '', strokeWidth = 2, filled = false, style }) {
+import { memo } from 'react'
+
+export const Icon = memo(function Icon({ name, size = 20, className = '', strokeWidth = 2, filled = false, style }) {
   return (
     <svg
       width={size}
@@ -256,7 +258,7 @@ export function Icon({ name, size = 20, className = '', strokeWidth = 2, filled 
       {ELEMENTS[name] ?? ELEMENTS.spark}
     </svg>
   )
-}
+})
 
 /** Logo Google resmi (fill, multi-warna). */
 export function GoogleIcon({ size = 20 }) {

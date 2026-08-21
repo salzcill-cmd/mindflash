@@ -1,10 +1,10 @@
-import { useRef, useState } from 'react'
+import { memo, useRef, useState } from 'react'
 
 /**
  * Efek miring 3D halus saat hover (desktop saja — dinonaktifkan di layar
  * sentuh). Hanya memakai transform, jadi GPU-friendly.
  */
-export default function TiltCard({ children, className = '', max = 7, ...rest }) {
+const TiltCard = memo(function TiltCard({ children, className = '', max = 7, ...rest }) {
   const ref = useRef(null)
   const [tilt, setTilt] = useState({ x: 0, y: 0 })
   const [enabled] = useState(() =>
@@ -36,4 +36,6 @@ export default function TiltCard({ children, className = '', max = 7, ...rest })
       {children}
     </div>
   )
-}
+})
+
+export default TiltCard

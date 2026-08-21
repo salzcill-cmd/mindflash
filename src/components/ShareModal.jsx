@@ -1,10 +1,10 @@
-import { useState } from 'react'
+import { memo, useState } from 'react'
 import Modal from './ui/Modal'
 import Button from './ui/Button'
 import { Icon } from './Icons'
 import { toast } from '../store/toast'
 
-export default function ShareModal({ open, onClose, type, id, isPublic, onTogglePublic, title }) {
+const ShareModal = memo(function ShareModal({ open, onClose, type, id, isPublic, onTogglePublic, title }) {
   const [busy, setBusy] = useState(false)
   const shareUrl = `${window.location.origin}/share/${type}/${id}`
 
@@ -87,4 +87,6 @@ export default function ShareModal({ open, onClose, type, id, isPublic, onToggle
       </div>
     </Modal>
   )
-}
+})
+
+export default ShareModal

@@ -13,10 +13,10 @@ import Footer from './components/Footer'
 import ScrollProgress from './components/ScrollProgress'
 import ErrorBoundary from './components/ErrorBoundary'
 import Landing from './pages/Landing'
-import Auth from './pages/Auth'
-import NotFound from './pages/NotFound'
 
 // Halaman berat di-load sesuai kebutuhan (code splitting)
+const Auth = lazy(() => import('./pages/Auth'))
+const NotFound = lazy(() => import('./pages/NotFound'))
 const Dashboard = lazy(() => import('./pages/Dashboard'))
 const MindmapEditor = lazy(() => import('./pages/MindmapEditor'))
 const FlashcardEditor = lazy(() => import('./pages/FlashcardEditor'))

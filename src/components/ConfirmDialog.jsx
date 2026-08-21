@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { memo, useState } from 'react'
 import Modal from './ui/Modal'
 import Button from './ui/Button'
 import { Input } from './ui/Input'
@@ -8,7 +8,7 @@ import { Icon } from './Icons'
  * Dialog konfirmasi dengan mode "double" untuk aksi berbahaya:
  * user harus mengetik kata kunci lalu klik dua kali.
  */
-export default function ConfirmDialog({
+const ConfirmDialog = memo(function ConfirmDialog({
   open,
   onClose,
   title,
@@ -86,4 +86,6 @@ export default function ConfirmDialog({
       </div>
     </Modal>
   )
-}
+})
+
+export default ConfirmDialog

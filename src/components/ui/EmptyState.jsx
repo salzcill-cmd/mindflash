@@ -1,7 +1,8 @@
+import { memo } from 'react'
 import { motion } from 'framer-motion'
 import { Icon } from '../Icons'
 
-export default function EmptyState({ icon = 'spark', title, desc, action, emoji = '🎈' }) {
+const EmptyState = memo(function EmptyState({ icon = 'spark', title, desc, action, emoji = '🎈' }) {
   return (
     <motion.div
       initial={{ opacity: 0, y: 14 }}
@@ -26,4 +27,6 @@ export default function EmptyState({ icon = 'spark', title, desc, action, emoji 
       {action}
     </motion.div>
   )
-}
+})
+
+export default EmptyState

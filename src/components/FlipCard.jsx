@@ -106,4 +106,6 @@ const FlipCard = memo(function FlipCard({
       </div>
     </div>
   )
-}
+})
+
+export default FlipCard

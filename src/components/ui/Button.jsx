@@ -20,7 +20,9 @@ const SIZES = {
   icon: 'p-2.5 rounded-xl',
 }
 
-export default function Button({
+import { memo } from 'react'
+
+const Button = memo(function Button({
   variant = 'primary',
   size = 'md',
   className = '',
@@ -40,7 +42,9 @@ export default function Button({
       {children}
     </button>
   )
-}
+})
+
+export default Button
 
 export function Spinner({ size = 20, className = '' }) {
   return (
