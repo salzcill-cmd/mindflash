@@ -33,7 +33,7 @@ const useEditor = () => useContext(EditorCtx)
 // Node custom MindFlash
 // ============================================================
 function MindNode({ id, data, selected }) {
-  const { mode, direction, addChild } = useEditor()
+  const { mode, direction, addChild, openEditor } = useEditor()
   const color = nodeColor(data.color)
   const isDown = mode === 'auto-layout' && direction === 'down'
 
@@ -84,6 +84,17 @@ function MindNode({ id, data, selected }) {
       >
         <Icon name="plus" size={14} strokeWidth={3} />
       </button>
+
+      <button
+        onClick={(e) => {
+          e.stopPropagation()
+          openEditor(id)
+        }}
+        aria-label="Edit node"
+        className="tap absolute -top-2.5 -left-2.5 w-7 h-7 rounded-full bg-white border-[2px] border-line text-ink-soft hover:text-brand hover:border-brand flex items-center justify-center shadow-[0_6px_14px_-4px_rgba(43,35,80,0.35)] opacity-0 group-hover:opacity-100 transition-opacity"
+      >
+        <Icon name="pen" size={12} />
+      </button>
     </div>
   )
 }
@@ -119,6 +130,7 @@ function Editor() {
   const [helpOpen, setHelpOpen] = useState(false)
   const [canUndo, setCanUndo] = useState(false)
   const [canRedo, setCanRedo] = useState(false)
+  const [editingId, setEditingId] = useState(null)
 
   const loadedRef = useRef(false)
   const stateRef = useRef({ nodes: [], edges: [] })
@@ -262,11 +274,26 @@ function Editor() {
     recordBefore()
   }, [mode, recordBefore])
 
-  // Double-klik node → langsung edit label di panel
-  const onNodeDoubleClick = useCallback((_, node) => {
-    setNodes((prev) => prev.map((n) => ({ ...n, selected: n.id === node.id })))
+  // Double-klik node → buka panel edit & fokus ke input label.
+  // Klik biasa HANYA memilih node (agar drag tidak terganggu panel).
+  const openEditor = useCallback((nodeId) => {
+    setNodes((prev) => prev.map((n) => ({ ...n, selected: n.id === nodeId })))
+    setEditingId(nodeId)
     setTimeout(() => labelInputRef.current?.focus(), 140)
   }, [])
+
+  const onNodeDoubleClick = useCallback((_, node) => openEditor(node.id), [openEditor])
+
+  // Kalau panel sedang terbuka, klik node lain → pindah target edit
+  const onNodeClick = useCallback(
+    (_, node) => {
+      setEditingId((cur) => (cur && cur !== node.id ? node.id : cur))
+    },
+    [],
+  )
+
+  // Panel edit otomatis tertutup saat node yang diedit dihapus,
+  // karena editingNode menjadi undefined.
 
   // ---------- Auto-layout: susun otomatis saat struktur berubah ----------
   const structureSig = useMemo(
@@ -416,9 +443,14 @@ function Editor() {
     [mode, direction, recordBefore, rf],
   )
 
-  const updateSelectedNode = useCallback((patch) => {
-    setNodes((prev) => prev.map((n) => (n.selected ? { ...n, data: { ...n.data, ...patch } } : n)))
-  }, [])
+  const updateEditingNode = useCallback(
+    (patch) => {
+      setNodes((prev) =>
+        prev.map((n) => (n.id === editingId ? { ...n, data: { ...n.data, ...patch } } : n)),
+      )
+    },
+    [editingId],
+  )
 
   // ---------- Konversi mindmap → flashcard (1-klik) ----------
   const convertToDeck = async () => {
@@ -460,6 +492,7 @@ function Editor() {
 
   const selectedNode = nodes.find((n) => n.selected)
   const selectedEdge = edges.find((e) => e.selected)
+  const editingNode = nodes.find((n) => n.id === editingId)
 
   if (!loaded) {
     return (
@@ -485,7 +518,7 @@ function Editor() {
     )
 
   return (
-    <EditorCtx.Provider value={{ mode, direction, addChild }}>
+    <EditorCtx.Provider value={{ mode, direction, addChild, openEditor }}>
       <div className="relative h-[calc(100vh-68px)]">
         <ReactFlow
           nodes={nodes}
@@ -496,6 +529,7 @@ function Editor() {
           onConnect={onConnect}
           onNodeDragStart={onNodeDragStart}
           onNodeDoubleClick={onNodeDoubleClick}
+          onNodeClick={onNodeClick}
           nodesDraggable={mode !== 'auto-layout'}
           nodesConnectable
           connectionLineType={edgeType === 'straight' ? ConnectionLineType.Straight : ConnectionLineType.Bezier}
@@ -604,15 +638,13 @@ function Editor() {
           </div>
         </div>
 
-        {/* ======== Panel edit node ======== */}
-        {selectedNode && (
+        {/* ======== Panel edit node (terbuka via double-klik / tombol pensil) ======== */}
+        {editingNode && (
           <div className="absolute z-30 inset-x-3 bottom-3 md:inset-x-auto md:right-3 md:top-[76px] md:bottom-auto md:w-72 max-h-[46%] md:max-h-none overflow-y-auto bg-surface/95 backdrop-blur rounded-3xl border-[1.5px] border-line shadow-[0_24px_60px_-20px_rgba(43,35,80,0.4)] p-4 animate-pop">
             <div className="flex items-center justify-between mb-3">
               <h3 className="font-extrabold text-[15px] text-ink">Edit Node</h3>
               <button
-                onClick={() =>
-                  setNodes((prev) => prev.map((n) => ({ ...n, selected: false })))
-                }
+                onClick={() => setEditingId(null)}
                 className="tap p-1.5 rounded-lg text-ink-faint hover:bg-surface-2"
                 aria-label="Tutup panel"
               >
@@ -621,8 +653,8 @@ function Editor() {
             </div>
             <input
               ref={labelInputRef}
-              value={selectedNode.data.label}
-              onChange={(e) => updateSelectedNode({ label: sanitizeText(e.target.value, { maxLength: 60 }) })}
+              value={editingNode.data.label}
+              onChange={(e) => updateEditingNode({ label: sanitizeText(e.target.value, { maxLength: 60 }) })}
               onFocus={recordBefore}
               placeholder="Teks node…"
               className="w-full bg-surface-2 border-[1.5px] border-line rounded-xl px-3.5 py-2.5 text-sm font-extrabold focus:border-brand focus:outline-none focus:ring-4 focus:ring-brand/15 mb-4"
@@ -634,15 +666,15 @@ function Editor() {
                   key={c.id}
                   onClick={() => {
                     recordBefore()
-                    updateSelectedNode({ color: c.id })
+                    updateEditingNode({ color: c.id })
                   }}
                   aria-label={c.name}
                   className="tap w-8 h-8 rounded-xl border-[2.5px] transition-transform hover:scale-110"
                   style={{
                     backgroundColor: c.bg,
-                    borderColor: selectedNode.data.color === c.id ? c.border : c.bg,
+                    borderColor: editingNode.data.color === c.id ? c.border : c.bg,
                     boxShadow:
-                      selectedNode.data.color === c.id ? `0 0 0 2.5px ${c.border}55` : undefined,
+                      editingNode.data.color === c.id ? `0 0 0 2.5px ${c.border}55` : undefined,
                   }}
                 />
               ))}
@@ -654,10 +686,10 @@ function Editor() {
                   key={ic}
                   onClick={() => {
                     recordBefore()
-                    updateSelectedNode({ icon: ic })
+                    updateEditingNode({ icon: ic })
                   }}
                   className={`tap text-xl h-10 rounded-xl flex items-center justify-center transition-all hover:scale-110 hover:bg-surface-2 ${
-                    selectedNode.data.icon === ic ? 'bg-brand-soft ring-2 ring-brand/40' : ''
+                    editingNode.data.icon === ic ? 'bg-brand-soft ring-2 ring-brand/40' : ''
                   }`}
                   aria-label={`Ikon ${ic}`}
                 >
